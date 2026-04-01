@@ -1,14 +1,36 @@
-# Apple Matting
-
-[中文文档](./README.zh.md)
-
-[![Website](https://img.shields.io/badge/Website-matting.lingxiangtools.top-0f766e?style=flat-square)](https://matting.lingxiangtools.top/)
-[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-f59e0b?style=flat-square)](./LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-macOS%2014%2B-111827?style=flat-square)](https://matting.lingxiangtools.top/)
-[![Tauri](https://img.shields.io/badge/Tauri-2.x-24c8db?style=flat-square)](https://tauri.app/)
-[![Vue](https://img.shields.io/badge/Vue-3.x-42b883?style=flat-square)](https://vuejs.org/)
-
-![Apple Matting Logo](./app_logo.png)
+<p align="center">
+  <img src="./app_logo.png" alt="Apple Matting Logo" width="160" />
+</p>
+<h1 align="center">Apple Matting</h1>
+<p align="center">A local macOS desktop matting tool built with Tauri, Vue, and Rust.</p>
+<p align="center">
+  <a href="./README.zh.md">中文文档</a>
+</p>
+<p align="center">
+  <a href="https://github.com/pangxiaobin/apple-matting/releases">
+    <img src="https://img.shields.io/badge/Download-Releases-111827?style=for-the-badge&logo=github" alt="Download from GitHub Releases" />
+  </a>
+  <a href="https://matting.lingxiangtools.top/#download">
+    <img src="https://img.shields.io/badge/Download-Website-0f766e?style=for-the-badge&logo=safari" alt="Download from Website" />
+  </a>
+</p>
+<p align="center">
+  <a href="https://matting.lingxiangtools.top/">
+    <img src="https://img.shields.io/badge/Website-matting.lingxiangtools.top-0f766e?style=flat-square" alt="Website" />
+  </a>
+  <a href="./LICENSE">
+    <img src="https://img.shields.io/badge/License-GPLv3-f59e0b?style=flat-square" alt="License: GPLv3" />
+  </a>
+  <a href="https://matting.lingxiangtools.top/">
+    <img src="https://img.shields.io/badge/Platform-macOS%2014%2B-111827?style=flat-square" alt="Platform" />
+  </a>
+  <a href="https://tauri.app/">
+    <img src="https://img.shields.io/badge/Tauri-2.x-24c8db?style=flat-square" alt="Tauri" />
+  </a>
+  <a href="https://vuejs.org/">
+    <img src="https://img.shields.io/badge/Vue-3.x-42b883?style=flat-square" alt="Vue" />
+  </a>
+</p>
 
 Apple Matting is a local desktop background-removal tool built with `Tauri 2`, `Vue 3`, and `Rust`. The current matting backend relies on native macOS capabilities and is designed for fast background removal for portraits, product photos, avatars, and similar images.
 
@@ -27,13 +49,21 @@ Website: <https://matting.lingxiangtools.top/>
 
 ## Demo
 
-The repository includes a runtime demo video:
+![Apple Matting Demo](./images/operate.gif)
 
-- [Watch demo video `images/oreater.mp4`](./images/oreater.mp4)
+## Screenshots
 
-If your Markdown renderer supports HTML video preview, you can also play it directly:
-
-<video src="./images/oreater.mp4" controls muted playsinline width="100%"></video>
+<p align="center">
+  <img src="./images/01.webp" alt="Apple Matting screenshot 01" width="48%" />
+  <img src="./images/02.webp" alt="Apple Matting screenshot 02" width="48%" />
+</p>
+<p align="center">
+  <img src="./images/02-1.webp" alt="Apple Matting screenshot 03" width="48%" />
+  <img src="./images/03.webp" alt="Apple Matting screenshot 04" width="48%" />
+</p>
+<p align="center">
+  <img src="./images/04.webp" alt="Apple Matting screenshot 05" width="72%" />
+</p>
 
 ## Stack
 
@@ -122,3 +152,11 @@ Issues and pull requests are welcome. By contributing to this repository, you ag
 
 - Your contribution will be distributed under the same project license
 - You have the legal right to submit the contribution
+
+## Community
+
+- Friendly community: [linux.do](https://linux.do)
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=pangxiaobin/apple-matting&type=Date)](https://star-history.com/#pangxiaobin/apple-matting&Date)
