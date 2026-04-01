@@ -1,0 +1,124 @@
+# Apple Matting
+
+[中文文档](./README.zh.md)
+
+[![Website](https://img.shields.io/badge/Website-matting.lingxiangtools.top-0f766e?style=flat-square)](https://matting.lingxiangtools.top/)
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-f59e0b?style=flat-square)](./LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-macOS%2014%2B-111827?style=flat-square)](https://matting.lingxiangtools.top/)
+[![Tauri](https://img.shields.io/badge/Tauri-2.x-24c8db?style=flat-square)](https://tauri.app/)
+[![Vue](https://img.shields.io/badge/Vue-3.x-42b883?style=flat-square)](https://vuejs.org/)
+
+![Apple Matting Logo](./app_logo.png)
+
+Apple Matting is a local desktop background-removal tool built with `Tauri 2`, `Vue 3`, and `Rust`. The current matting backend relies on native macOS capabilities and is designed for fast background removal for portraits, product photos, avatars, and similar images.
+
+Website: <https://matting.lingxiangtools.top/>
+
+## Features
+
+- Single image background removal
+- Batch folder scanning and processing
+- Supports `JPG`, `PNG`, `WEBP`, and `BMP`
+- Before/after comparison preview
+- Transparent, solid-color, and gradient backgrounds
+- Built-in result editor for erase / restore refinements
+- Clipboard copy, save-as, and reveal-in-folder actions
+- Chinese and English UI
+
+## Demo
+
+The repository includes a runtime demo video:
+
+- [Watch demo video `images/oreater.mp4`](./images/oreater.mp4)
+
+If your Markdown renderer supports HTML video preview, you can also play it directly:
+
+<video src="./images/oreater.mp4" controls muted playsinline width="100%"></video>
+
+## Stack
+
+- Frontend: `Vue 3`, `Vite`, `Element Plus`, `vue-i18n`
+- Desktop: `Tauri 2`
+- Backend: `Rust`
+- Native layer: `Swift + macOS Vision / Core Image`
+
+## Requirements
+
+- macOS 14.0 or later
+- Node.js 18+
+- `pnpm`
+- Rust toolchain
+- Xcode Command Line Tools
+
+Note: the matting engine currently integrates with macOS native APIs through `src-tauri/swift/MattingBridge.swift`. Non-macOS platforms will return an unsupported-platform error.
+
+## Quick Start
+
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Run in development:
+
+```bash
+pnpm tauri dev
+```
+
+Build the desktop app:
+
+```bash
+pnpm tauri build
+```
+
+Generate icons:
+
+```bash
+pnpm tauri icon app_logo.png
+```
+
+## Project Structure
+
+```text
+.
+├── src/                # Vue frontend
+├── src-tauri/          # Tauri / Rust / Swift native layer
+├── public/             # Static assets
+├── images/             # Demo assets for README
+├── app_logo.png        # App icon source
+```
+
+## Usage
+
+### Single Image
+
+1. Open the app and go to `Single Image`
+2. Click, drag, or paste an image
+3. Start matting
+4. Edit, replace background, copy, or save the result
+
+### Batch Processing
+
+1. Go to `Batch Processing`
+2. Select the input folder
+3. Optionally choose an output folder
+4. Start processing and monitor progress
+5. Reveal generated files in Finder
+
+## License
+
+Licensed under `GNU GPL v3.0` (`GPL-3.0-only`). See [LICENSE](./LICENSE).
+
+## Author
+
+- Author: `XIAOBIN`
+- Email: `lxt@lingxiangtools.top`
+- Website: `https://matting.lingxiangtools.top/`
+
+## Contributing
+
+Issues and pull requests are welcome. By contributing to this repository, you agree that:
+
+- Your contribution will be distributed under the same project license
+- You have the legal right to submit the contribution
