@@ -108,6 +108,14 @@ pnpm tauri build
 pnpm tauri icon app_logo.png
 ```
 
+## 注意事项
+
+如果下载后 macOS 提示 `apple-matting.app`“文件已损坏”，可执行以下命令移除隔离属性后再重新打开：
+
+```bash
+xattr -rd com.apple.quarantine /Applications/apple-matting.app
+```
+
 ## 项目结构
 
 ```text

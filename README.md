@@ -108,6 +108,14 @@ Generate icons:
 pnpm tauri icon app_logo.png
 ```
 
+## Notes
+
+If macOS shows that `apple-matting.app` is damaged after download, run the following command to remove the quarantine attribute and repair it:
+
+```bash
+xattr -rd com.apple.quarantine /Applications/apple-matting.app
+```
+
 ## Project Structure
 
 ```text
