@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apple Matting CLI"
+  short_description: "Use and register the local matting CLI"
+  default_prompt: "Use $apple-matting-cli to run or register the local background-removal CLI."
