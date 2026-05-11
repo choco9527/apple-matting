@@ -84,7 +84,7 @@ public func mattingProcessImage(
         guard let cropRect = subjectCropRect(
             from: maskBuffer,
             imageExtent: outputImage.extent,
-            paddingRatio: 0.02
+            paddingRatio: 0
         ) else {
             return -7
         }
