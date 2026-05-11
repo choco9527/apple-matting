@@ -39,6 +39,9 @@ pub enum MattingError {
     #[error("Could not write output PNG")]
     WriteFailed,
 
+    #[error("Could not calculate crop bounds")]
+    CropBoundsFailed,
+
     #[error("macOS 12.0 or later is required")]
     UnsupportedOs,
 
@@ -119,6 +122,7 @@ pub fn perform_matting(
             -4 => Err(MattingError::MaskFailed),
             -5 => Err(MattingError::BlendFailed),
             -6 => Err(MattingError::WriteFailed),
+            -7 => Err(MattingError::CropBoundsFailed),
             -99 => Err(MattingError::UnsupportedOs),
             code => Err(MattingError::Unknown(code)),
         }

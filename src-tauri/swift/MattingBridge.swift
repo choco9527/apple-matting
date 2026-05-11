@@ -20,6 +20,7 @@ import CoreVideo
 //  -4  -> mask generation failed
 //  -5  -> blend filter produced no output
 //  -6  -> failed to write output PNG
+//  -7  -> failed to calculate crop bounds
 //  -99 -> macOS version too old (requires 12.0+)
 
 @available(macOS 14.0, *)
@@ -85,7 +86,7 @@ public func mattingProcessImage(
             imageExtent: outputImage.extent,
             paddingRatio: 0.02
         ) else {
-            return -5
+            return -7
         }
 
         let cropped = finalImage.cropped(to: cropRect)
@@ -125,9 +126,6 @@ private func subjectCropRect(
     let height = CVPixelBufferGetHeight(maskBuffer)
     guard width > 0, height > 0, !imageExtent.isEmpty else { return nil }
 
-    let pixelFormat = CVPixelBufferGetPixelFormatType(maskBuffer)
-    guard pixelFormat == kCVPixelFormatType_OneComponent8 else { return nil }
-
     guard CVPixelBufferLockBaseAddress(maskBuffer, .readOnly) == kCVReturnSuccess else {
         return nil
     }
@@ -135,6 +133,7 @@ private func subjectCropRect(
 
     guard let baseAddress = CVPixelBufferGetBaseAddress(maskBuffer) else { return nil }
 
+    let pixelFormat = CVPixelBufferGetPixelFormatType(maskBuffer)
     let bytesPerRow = CVPixelBufferGetBytesPerRow(maskBuffer)
     let pixels = baseAddress.assumingMemoryBound(to: UInt8.self)
 
@@ -143,16 +142,69 @@ private func subjectCropRect(
     var maxX = -1
     var maxY = -1
 
-    for y in 0..<height {
-        let row = pixels.advanced(by: y * bytesPerRow)
-        for x in 0..<width {
-            if row[x] > 0 {
-                minX = min(minX, x)
-                minY = min(minY, y)
-                maxX = max(maxX, x)
-                maxY = max(maxY, y)
+    switch pixelFormat {
+    case kCVPixelFormatType_OneComponent8:
+        for y in 0..<height {
+            let row = pixels.advanced(by: y * bytesPerRow)
+            for x in 0..<width {
+                if row[x] > 0 {
+                    updateBounds(x: x, y: y, minX: &minX, minY: &minY, maxX: &maxX, maxY: &maxY)
+                }
             }
         }
+
+    case kCVPixelFormatType_OneComponent16Half:
+        guard bytesPerRow >= width * MemoryLayout<UInt16>.stride else { return nil }
+        let values = baseAddress.assumingMemoryBound(to: UInt16.self)
+        let valuesPerRow = bytesPerRow / MemoryLayout<UInt16>.stride
+        for y in 0..<height {
+            let row = values.advanced(by: y * valuesPerRow)
+            for x in 0..<width {
+                if row[x] != 0 {
+                    updateBounds(x: x, y: y, minX: &minX, minY: &minY, maxX: &maxX, maxY: &maxY)
+                }
+            }
+        }
+
+    case kCVPixelFormatType_OneComponent32Float:
+        guard bytesPerRow >= width * MemoryLayout<Float32>.stride else { return nil }
+        let values = baseAddress.assumingMemoryBound(to: Float32.self)
+        let valuesPerRow = bytesPerRow / MemoryLayout<Float32>.stride
+        for y in 0..<height {
+            let row = values.advanced(by: y * valuesPerRow)
+            for x in 0..<width {
+                if row[x] > 0 {
+                    updateBounds(x: x, y: y, minX: &minX, minY: &minY, maxX: &maxX, maxY: &maxY)
+                }
+            }
+        }
+
+    case kCVPixelFormatType_32BGRA, kCVPixelFormatType_32RGBA:
+        guard bytesPerRow >= width * 4 else { return nil }
+        for y in 0..<height {
+            let row = pixels.advanced(by: y * bytesPerRow)
+            for x in 0..<width {
+                let offset = x * 4
+                if row[offset] > 0 || row[offset + 1] > 0 || row[offset + 2] > 0 {
+                    updateBounds(x: x, y: y, minX: &minX, minY: &minY, maxX: &maxX, maxY: &maxY)
+                }
+            }
+        }
+
+    case kCVPixelFormatType_32ARGB:
+        guard bytesPerRow >= width * 4 else { return nil }
+        for y in 0..<height {
+            let row = pixels.advanced(by: y * bytesPerRow)
+            for x in 0..<width {
+                let offset = x * 4
+                if row[offset + 1] > 0 || row[offset + 2] > 0 || row[offset + 3] > 0 {
+                    updateBounds(x: x, y: y, minX: &minX, minY: &minY, maxX: &maxX, maxY: &maxY)
+                }
+            }
+        }
+
+    default:
+        return nil
     }
 
     guard maxX >= minX, maxY >= minY else { return nil }
@@ -173,4 +225,19 @@ private func subjectCropRect(
     let clampedRect = paddedRect.intersection(imageExtent).integral
 
     return clampedRect.isEmpty ? nil : clampedRect
+}
+
+@available(macOS 14.0, *)
+private func updateBounds(
+    x: Int,
+    y: Int,
+    minX: inout Int,
+    minY: inout Int,
+    maxX: inout Int,
+    maxY: inout Int
+) {
+    minX = min(minX, x)
+    minY = min(minY, y)
+    maxX = max(maxX, x)
+    maxY = max(maxY, y)
 }
