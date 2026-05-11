@@ -1,5 +1,5 @@
-mod commands;
 pub mod cli;
+mod commands;
 pub mod matting;
 
 use commands::{process_batch_images, process_single_image};
