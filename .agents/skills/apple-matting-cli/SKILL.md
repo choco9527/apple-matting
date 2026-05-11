@@ -1,6 +1,6 @@
 ---
 name: apple-matting-cli
-description: Use when Codex needs to explain, verify, build, install, register, or troubleshoot this project's `apple-matting-cli` command-line and HTTP server interface for local macOS background removal. Applies to tasks involving CLI usage examples, `--server --port`, the `POST /matting` multipart API, PATH registration, release binary location, `-o/--output` arguments, build artifacts, and deciding whether a background service is needed.
+description: Use when Codex needs to explain, verify, build, install, register, or troubleshoot this project's `apple-matting-cli` command-line and HTTP server interface for local macOS background removal. Applies to tasks involving CLI usage examples, `--crop`, `--server --port`, the `POST /matting` multipart API, PATH registration, release binary location, `-o/--output` arguments, build artifacts, and deciding whether a background service is needed.
 ---
 
 # Apple Matting CLI
@@ -24,6 +24,7 @@ apple-matting-cli input.jpg
 apple-matting-cli input.jpg output.png
 apple-matting-cli input.jpg -o output.png
 apple-matting-cli input.jpg --output output.png
+apple-matting-cli input.jpg --crop -o output.png
 apple-matting-cli --server --port 8080
 apple-matting-cli --help
 ```
@@ -32,6 +33,7 @@ Behavior:
 
 - With only `input.jpg`, write the default sibling output path from Rust `derive_output_path`, usually `input_nobg.png`.
 - With positional `output.png`, `-o output.png`, or `--output output.png`, write to the specified output path.
+- With `--crop`, trim the transparent PNG to the detected foreground mask bounds.
 - Print the written output path to stdout on success.
 - Print errors to stderr and return a non-zero exit code on failure.
 - Support only macOS for actual matting because the backend calls Swift Vision APIs.
@@ -55,7 +57,7 @@ Expected help output:
 
 ```text
 Usage:
-  apple-matting-cli <input-image> [-o|--output <output-png>]
+  apple-matting-cli <input-image> [-o|--output <output-png>] [--crop]
   apple-matting-cli --server [--port <port>]
 ```
 
@@ -129,9 +131,16 @@ Call the single-image matting endpoint:
 curl -X POST -F "file=@input.jpg" http://127.0.0.1:8080/matting --output output.png
 ```
 
+Crop the HTTP output to the detected foreground bounds:
+
+```bash
+curl -X POST -F "file=@input.jpg" -F "crop=true" http://127.0.0.1:8080/matting --output output.png
+```
+
 Expected behavior:
 
 - Success: response body is the transparent PNG, with `Content-Type: image/png`.
+- `crop=true`, `crop=1`, or `crop=yes`: crop the result to the foreground mask bounds.
 - Missing `file` field: JSON error such as `{"error":"Missing multipart field file"}`.
 - Matting failures: JSON error with HTTP `422`.
 

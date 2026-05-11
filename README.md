@@ -174,10 +174,13 @@ apple-matting-cli input.jpg
 apple-matting-cli input.jpg output.png
 apple-matting-cli input.jpg -o output.png
 apple-matting-cli input.jpg --output output.png
+apple-matting-cli input.jpg --crop -o output.png
 apple-matting-cli --server --port 8080
 ```
 
 With only an input path, the CLI writes a sibling file named like `input_nobg.png`. The CLI is a one-shot local command: it processes the image, writes the transparent PNG, prints the output path, and exits.
+
+Add `--crop` to trim the output PNG to the detected foreground bounds.
 
 To expose a simple local HTTP interface, start server mode:
 
@@ -189,6 +192,12 @@ Then upload one image with multipart field name `file`:
 
 ```bash
 curl -X POST -F "file=@input.jpg" http://127.0.0.1:8080/matting --output output.png
+```
+
+To crop the HTTP output to the detected foreground bounds, include `crop=true`:
+
+```bash
+curl -X POST -F "file=@input.jpg" -F "crop=true" http://127.0.0.1:8080/matting --output output.png
 ```
 
 The HTTP server returns `image/png` on success. Server mode does not add its own queue or concurrency limit; put rate limiting, queueing, authentication, or reverse proxy controls in front of it for production use.

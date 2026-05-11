@@ -2,6 +2,7 @@ import Foundation
 import Vision
 import CoreImage
 import CoreGraphics
+import CoreVideo
 
 // MARK: - Single Image Matting
 //
@@ -25,7 +26,8 @@ import CoreGraphics
 @_cdecl("matting_process_image")
 public func mattingProcessImage(
     inputPath: UnsafePointer<CChar>,
-    outputPath: UnsafePointer<CChar>
+    outputPath: UnsafePointer<CChar>,
+    cropToSubject: Bool
 ) -> Int32 {
     guard #available(macOS 14.0, *) else { return -99 }
 
@@ -75,13 +77,33 @@ public func mattingProcessImage(
 
     guard let outputImage = blendFilter.outputImage else { return -5 }
 
+    // --- Optional: crop to subject bounding box ---
+    var finalImage = outputImage
+    if cropToSubject {
+        guard let cropRect = subjectCropRect(
+            from: maskBuffer,
+            imageExtent: outputImage.extent,
+            paddingRatio: 0.02
+        ) else {
+            return -5
+        }
+
+        let cropped = finalImage.cropped(to: cropRect)
+        finalImage = cropped.transformed(
+            by: CGAffineTransform(
+                translationX: -cropped.extent.origin.x,
+                y: -cropped.extent.origin.y
+            )
+        )
+    }
+
     // --- Write RGBA PNG ---
     let context = CIContext(options: [.workingColorSpace: CGColorSpaceCreateDeviceRGB()])
     let outputURL = URL(fileURLWithPath: output)
 
     do {
         try context.writePNGRepresentation(
-            of: outputImage,
+            of: finalImage,
             to: outputURL,
             format: .RGBA8,
             colorSpace: CGColorSpaceCreateDeviceRGB()
@@ -91,4 +113,64 @@ public func mattingProcessImage(
     }
 
     return 0
+}
+
+@available(macOS 14.0, *)
+private func subjectCropRect(
+    from maskBuffer: CVPixelBuffer,
+    imageExtent: CGRect,
+    paddingRatio: CGFloat
+) -> CGRect? {
+    let width = CVPixelBufferGetWidth(maskBuffer)
+    let height = CVPixelBufferGetHeight(maskBuffer)
+    guard width > 0, height > 0, !imageExtent.isEmpty else { return nil }
+
+    let pixelFormat = CVPixelBufferGetPixelFormatType(maskBuffer)
+    guard pixelFormat == kCVPixelFormatType_OneComponent8 else { return nil }
+
+    guard CVPixelBufferLockBaseAddress(maskBuffer, .readOnly) == kCVReturnSuccess else {
+        return nil
+    }
+    defer { CVPixelBufferUnlockBaseAddress(maskBuffer, .readOnly) }
+
+    guard let baseAddress = CVPixelBufferGetBaseAddress(maskBuffer) else { return nil }
+
+    let bytesPerRow = CVPixelBufferGetBytesPerRow(maskBuffer)
+    let pixels = baseAddress.assumingMemoryBound(to: UInt8.self)
+
+    var minX = width
+    var minY = height
+    var maxX = -1
+    var maxY = -1
+
+    for y in 0..<height {
+        let row = pixels.advanced(by: y * bytesPerRow)
+        for x in 0..<width {
+            if row[x] > 0 {
+                minX = min(minX, x)
+                minY = min(minY, y)
+                maxX = max(maxX, x)
+                maxY = max(maxY, y)
+            }
+        }
+    }
+
+    guard maxX >= minX, maxY >= minY else { return nil }
+
+    let scaleX = imageExtent.width / CGFloat(width)
+    let scaleY = imageExtent.height / CGFloat(height)
+
+    let subjectRect = CGRect(
+        x: imageExtent.origin.x + CGFloat(minX) * scaleX,
+        y: imageExtent.origin.y + CGFloat(height - maxY - 1) * scaleY,
+        width: CGFloat(maxX - minX + 1) * scaleX,
+        height: CGFloat(maxY - minY + 1) * scaleY
+    )
+
+    let paddingX = subjectRect.width * paddingRatio
+    let paddingY = subjectRect.height * paddingRatio
+    let paddedRect = subjectRect.insetBy(dx: -paddingX, dy: -paddingY)
+    let clampedRect = paddedRect.intersection(imageExtent).integral
+
+    return clampedRect.isEmpty ? nil : clampedRect
 }

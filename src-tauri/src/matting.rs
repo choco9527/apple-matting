@@ -13,6 +13,7 @@ extern "C" {
     fn matting_process_image(
         input_path: *const std::os::raw::c_char,
         output_path: *const std::os::raw::c_char,
+        crop_to_subject: bool,
     ) -> i32;
 }
 
@@ -75,16 +76,18 @@ pub fn derive_output_path(input_path: &str) -> Option<PathBuf> {
 /// * `input_path`  – absolute path to the source image
 /// * `output_path` – where the transparent-background PNG should be saved;
 ///                   if `None`, an `_nobg.png` sibling of `input_path` is used.
+/// * `crop_to_subject` – if `true`, crop the output to the subject bounding box.
 ///
 /// # Returns
 /// The absolute path of the written output file.
 pub fn perform_matting(
     input_path: &str,
     output_path: Option<&str>,
+    crop_to_subject: bool,
 ) -> Result<String, MattingError> {
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (input_path, output_path);
+        let _ = (input_path, output_path, crop_to_subject);
         return Err(MattingError::UnsupportedPlatform);
     }
 
@@ -105,7 +108,8 @@ pub fn perform_matting(
 
         // SAFETY: Swift function is thread-safe (it creates its own Vision handler
         // and CIContext per call). Pointers are valid for the duration of the call.
-        let ret = unsafe { matting_process_image(c_input.as_ptr(), c_output.as_ptr()) };
+        let ret =
+            unsafe { matting_process_image(c_input.as_ptr(), c_output.as_ptr(), crop_to_subject) };
 
         match ret {
             0 => Ok(out_str),

@@ -12,7 +12,7 @@ use crate::matting::perform_matting;
 
 const DEFAULT_SERVER_PORT: u16 = 8080;
 const USAGE: &str = "Usage:
-  apple-matting-cli <input-image> [-o|--output <output-png>]
+  apple-matting-cli <input-image> [-o|--output <output-png>] [--crop]
   apple-matting-cli --server [--port <port>]";
 
 #[derive(Debug, PartialEq, Eq)]
@@ -21,6 +21,7 @@ pub enum CliArgs {
     Run {
         input_path: String,
         output_path: Option<String>,
+        crop_to_subject: bool,
     },
     Server {
         port: u16,
@@ -36,25 +37,60 @@ pub fn parse_args(args: &[String]) -> Result<CliArgs, String> {
         return parse_server_args(args);
     }
 
-    match args {
-        [_bin, input_path] => Ok(CliArgs::Run {
-            input_path: input_path.clone(),
-            output_path: None,
-        }),
-        [_bin, input_path, output_path] => Ok(CliArgs::Run {
-            input_path: input_path.clone(),
-            output_path: Some(output_path.clone()),
-        }),
-        [_bin, input_path, output_flag, output_path]
-            if output_flag == "-o" || output_flag == "--output" =>
-        {
-            Ok(CliArgs::Run {
-                input_path: input_path.clone(),
-                output_path: Some(output_path.clone()),
-            })
+    parse_run_args(args)
+}
+
+fn parse_run_args(args: &[String]) -> Result<CliArgs, String> {
+    let mut crop_to_subject = false;
+    let mut input_path: Option<String> = None;
+    let mut output_path: Option<String> = None;
+    let mut index = 1;
+
+    while index < args.len() {
+        match args[index].as_str() {
+            "--crop" => {
+                crop_to_subject = true;
+                index += 1;
+            }
+            "-o" | "--output" => {
+                if input_path.is_none() {
+                    return Err(USAGE.to_string());
+                }
+
+                if output_path.is_some() {
+                    return Err(USAGE.to_string());
+                }
+
+                let value = args.get(index + 1).ok_or_else(|| USAGE.to_string())?;
+                if value.starts_with('-') {
+                    return Err(USAGE.to_string());
+                }
+
+                output_path = Some(value.clone());
+                index += 2;
+            }
+            arg if arg.starts_with('-') => return Err(USAGE.to_string()),
+            value => {
+                if input_path.is_none() {
+                    input_path = Some(value.to_string());
+                } else if output_path.is_none() {
+                    output_path = Some(value.to_string());
+                } else {
+                    return Err(USAGE.to_string());
+                }
+
+                index += 1;
+            }
         }
-        _ => Err(USAGE.to_string()),
     }
+
+    let input_path = input_path.ok_or_else(|| USAGE.to_string())?;
+
+    Ok(CliArgs::Run {
+        input_path,
+        output_path,
+        crop_to_subject,
+    })
 }
 
 fn parse_server_args(args: &[String]) -> Result<CliArgs, String> {
@@ -89,7 +125,8 @@ pub async fn run(args: Vec<String>) -> i32 {
         Ok(CliArgs::Run {
             input_path,
             output_path,
-        }) => match perform_matting(&input_path, output_path.as_deref()) {
+            crop_to_subject,
+        }) => match perform_matting(&input_path, output_path.as_deref(), crop_to_subject) {
             Ok(path) => {
                 println!("{path}");
                 0
@@ -129,47 +166,68 @@ async fn run_server(port: u16) -> Result<(), String> {
 }
 
 async fn handle_matting(mut multipart: Multipart) -> Result<Response, ApiError> {
+    let mut crop_to_subject = false;
+    let mut uploaded_file: Option<UploadedFile> = None;
+
     while let Some(field) = multipart
         .next_field()
         .await
         .map_err(ApiError::bad_request)?
     {
-        if field.name() != Some("file") {
+        let name = field.name().unwrap_or("");
+
+        if name == "crop" {
+            let value = field.text().await.map_err(ApiError::bad_request)?;
+            crop_to_subject = matches!(value.trim().to_lowercase().as_str(), "true" | "1" | "yes");
+            continue;
+        }
+
+        if name != "file" {
             continue;
         }
 
         let extension = input_extension(field.file_name());
         let bytes = field.bytes().await.map_err(ApiError::bad_request)?;
-        let temp_dir = tempfile::tempdir().map_err(ApiError::internal)?;
-        let input_path = temp_dir.path().join(format!("input.{extension}"));
-        let output_path = temp_dir.path().join("output.png");
+        uploaded_file = Some(UploadedFile {
+            extension,
+            bytes: bytes.to_vec(),
+        });
+    }
 
-        tokio::fs::write(&input_path, bytes)
-            .await
-            .map_err(ApiError::internal)?;
+    let uploaded_file = uploaded_file
+        .ok_or_else(|| ApiError::new(StatusCode::BAD_REQUEST, "Missing multipart field `file`"))?;
 
-        let input_string = input_path.to_string_lossy().to_string();
-        let output_string = output_path.to_string_lossy().to_string();
+    let temp_dir = tempfile::tempdir().map_err(ApiError::internal)?;
+    let input_path = temp_dir
+        .path()
+        .join(format!("input.{}", uploaded_file.extension));
+    let output_path = temp_dir.path().join("output.png");
 
-        let matting_result = tokio::task::spawn_blocking(move || {
-            perform_matting(&input_string, Some(&output_string))
-        })
+    tokio::fs::write(&input_path, uploaded_file.bytes)
         .await
         .map_err(ApiError::internal)?;
 
-        matting_result.map_err(ApiError::matting)?;
+    let input_string = input_path.to_string_lossy().to_string();
+    let output_string = output_path.to_string_lossy().to_string();
 
-        let output_bytes = tokio::fs::read(&output_path)
-            .await
-            .map_err(ApiError::internal)?;
+    let matting_result = tokio::task::spawn_blocking(move || {
+        perform_matting(&input_string, Some(&output_string), crop_to_subject)
+    })
+    .await
+    .map_err(ApiError::internal)?;
 
-        return Ok(([(header::CONTENT_TYPE, "image/png")], output_bytes).into_response());
-    }
+    matting_result.map_err(ApiError::matting)?;
 
-    Err(ApiError::new(
-        StatusCode::BAD_REQUEST,
-        "Missing multipart field `file`",
-    ))
+    let output_bytes = tokio::fs::read(&output_path)
+        .await
+        .map_err(ApiError::internal)?;
+
+    Ok(([(header::CONTENT_TYPE, "image/png")], output_bytes).into_response())
+}
+
+struct UploadedFile {
+    extension: &'static str,
+    bytes: Vec<u8>,
 }
 
 fn input_extension(file_name: Option<&str>) -> &'static str {
@@ -247,6 +305,7 @@ mod tests {
             Ok(CliArgs::Run {
                 input_path: "input.jpg".to_string(),
                 output_path: None,
+                crop_to_subject: false,
             })
         );
     }
@@ -264,6 +323,7 @@ mod tests {
             Ok(CliArgs::Run {
                 input_path: "input.jpg".to_string(),
                 output_path: Some("output.png".to_string()),
+                crop_to_subject: false,
             })
         );
     }
@@ -282,6 +342,7 @@ mod tests {
             Ok(CliArgs::Run {
                 input_path: "input.jpg".to_string(),
                 output_path: Some("output.png".to_string()),
+                crop_to_subject: false,
             })
         );
     }
@@ -300,6 +361,45 @@ mod tests {
             Ok(CliArgs::Run {
                 input_path: "input.jpg".to_string(),
                 output_path: Some("output.png".to_string()),
+                crop_to_subject: false,
+            })
+        );
+    }
+
+    #[test]
+    fn parses_crop_flag() {
+        let args = vec![
+            "apple-matting-cli".to_string(),
+            "input.jpg".to_string(),
+            "--crop".to_string(),
+        ];
+
+        assert_eq!(
+            parse_args(&args),
+            Ok(CliArgs::Run {
+                input_path: "input.jpg".to_string(),
+                output_path: None,
+                crop_to_subject: true,
+            })
+        );
+    }
+
+    #[test]
+    fn parses_crop_with_output() {
+        let args = vec![
+            "apple-matting-cli".to_string(),
+            "input.jpg".to_string(),
+            "--crop".to_string(),
+            "-o".to_string(),
+            "output.png".to_string(),
+        ];
+
+        assert_eq!(
+            parse_args(&args),
+            Ok(CliArgs::Run {
+                input_path: "input.jpg".to_string(),
+                output_path: Some("output.png".to_string()),
+                crop_to_subject: true,
             })
         );
     }
@@ -354,6 +454,29 @@ mod tests {
             "input.jpg".to_string(),
             "output.png".to_string(),
             "extra".to_string(),
+        ];
+
+        assert_eq!(parse_args(&args), Err(USAGE.to_string()));
+    }
+
+    #[test]
+    fn rejects_output_flag_without_value() {
+        let args = vec![
+            "apple-matting-cli".to_string(),
+            "input.jpg".to_string(),
+            "-o".to_string(),
+        ];
+
+        assert_eq!(parse_args(&args), Err(USAGE.to_string()));
+    }
+
+    #[test]
+    fn rejects_output_flag_before_input() {
+        let args = vec![
+            "apple-matting-cli".to_string(),
+            "-o".to_string(),
+            "output.png".to_string(),
+            "input.jpg".to_string(),
         ];
 
         assert_eq!(parse_args(&args), Err(USAGE.to_string()));

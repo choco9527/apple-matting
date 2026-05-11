@@ -174,10 +174,13 @@ apple-matting-cli input.jpg
 apple-matting-cli input.jpg output.png
 apple-matting-cli input.jpg -o output.png
 apple-matting-cli input.jpg --output output.png
+apple-matting-cli input.jpg --crop -o output.png
 apple-matting-cli --server --port 8080
 ```
 
 只传入输入路径时，CLI 会在原图同级目录输出类似 `input_nobg.png` 的文件。CLI 是一次性本地命令：启动后处理图片、写出透明 PNG、打印输出路径，然后退出。
+
+添加 `--crop` 可将输出 PNG 裁剪到检测到的前景主体边界。
 
 如需暴露一个简单的本地 HTTP 接口，可以启动 server 模式：
 
@@ -189,6 +192,12 @@ apple-matting-cli --server --port 8080
 
 ```bash
 curl -X POST -F "file=@input.jpg" http://127.0.0.1:8080/matting --output output.png
+```
+
+如需将 HTTP 输出裁剪到前景主体边界，可以传入 `crop=true`：
+
+```bash
+curl -X POST -F "file=@input.jpg" -F "crop=true" http://127.0.0.1:8080/matting --output output.png
 ```
 
 HTTP 服务成功时返回 `image/png`。server 模式自身不包含队列或并发限制；生产环境建议在外层增加限流、队列、鉴权或反向代理控制。

@@ -44,7 +44,7 @@ pub async fn process_single_image(
     output_path: Option<String>,
 ) -> MattingResult {
     let out = output_path.as_deref();
-    match perform_matting(&input_path, out) {
+    match perform_matting(&input_path, out, false) {
         Ok(path) => MattingResult {
             success: true,
             output_path: Some(path),
@@ -94,7 +94,7 @@ pub async fn process_batch_images(items: Vec<BatchInputItem>) -> Vec<BatchItemRe
 
         let handle = thread::spawn(move || {
             let out = output.as_deref();
-            let item_result = match perform_matting(&input, out) {
+            let item_result = match perform_matting(&input, out, false) {
                 Ok(path) => BatchItemResult {
                     input_path: input.clone(),
                     success: true,
