@@ -32,7 +32,7 @@
   </a>
 </p>
 
-Apple Matting 是一个基于 `Tauri 2 + Vue 3 + Rust` 构建的本地桌面抠图工具，当前后端抠图能力依赖 macOS 原生能力实现，适合快速处理人物、商品、头像等图片背景。
+Apple Matting 是一个基于 `Tauri 2 + Vue 3 + Rust` 构建的本地桌面抠图工具，当前后端抠图能力依赖 macOS 原生能力实现，适合快速处理人物、商品、头像等图片背景。同时项目提供 `apple-matting-cli` 命令行能力，方便在终端、脚本和本地自动化流程中直接调用单张图片抠图。
 
 官网：<https://matting.lingxiangtools.top/>
 
