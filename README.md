@@ -45,6 +45,7 @@ Website: <https://matting.lingxiangtools.top/>
 - Transparent, solid-color, and gradient backgrounds
 - Built-in result editor for erase / restore refinements
 - Clipboard copy, save-as, and reveal-in-folder actions
+- Optional `apple-matting-cli` command-line interface for local automation
 - Chinese and English UI
 
 ## Demo
@@ -102,6 +103,20 @@ Build the desktop app:
 pnpm tauri build
 ```
 
+Build the CLI:
+
+```bash
+cd src-tauri
+cargo build --release --bin apple-matting-cli
+```
+
+Optional: register the CLI in your shell:
+
+```bash
+ln -s "$(pwd)/target/release/apple-matting-cli" /usr/local/bin/apple-matting-cli
+apple-matting-cli --help
+```
+
 Generate icons:
 
 ```bash
@@ -143,6 +158,25 @@ xattr -rd com.apple.quarantine /Applications/apple-matting.app
 3. Optionally choose an output folder
 4. Start processing and monitor progress
 5. Reveal generated files in Finder
+
+### CLI
+
+After building and registering the CLI, process one image from any terminal:
+
+```bash
+apple-matting-cli input.jpg -o output.png
+```
+
+Supported forms:
+
+```bash
+apple-matting-cli input.jpg
+apple-matting-cli input.jpg output.png
+apple-matting-cli input.jpg -o output.png
+apple-matting-cli input.jpg --output output.png
+```
+
+With only an input path, the CLI writes a sibling file named like `input_nobg.png`. The CLI is a one-shot local command: it processes the image, writes the transparent PNG, prints the output path, and exits.
 
 ## License
 
